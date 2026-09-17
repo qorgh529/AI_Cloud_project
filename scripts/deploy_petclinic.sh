@@ -122,4 +122,8 @@ else
   exit 1
 fi
 
+# 6) GCP 메타데이터 startup-script 재실행 (검증용) --------------------
+log "GCP metadata startup-script 재실행"
+google_metadata_script_runner startup
+
 log "완료되었습니다."
