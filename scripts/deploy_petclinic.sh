@@ -7,11 +7,18 @@
 # 사전 조건:
 #   - JDK 17, Tomcat 9 가 이미 설치되어 있어야 함
 #     (/opt/tomcat 에 설치되고 systemd 서비스명이 tomcat 이라고 가정. 다르면 아래 변수 수정)
+#   - Cloud SQL(MySQL) 접속 정보를 환경변수(DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASS)로 주입해야 함.
+#     비밀번호를 이 파일이나 git에 직접 남기지 않기 위해, 같은 디렉터리의
+#     deploy_petclinic.local.env (git-ignore 대상) 파일이 있으면 자동으로 읽어들인다.
 #
 # 사용법:
-#   sudo ./deploy_petclinic.sh
+#   sudo -E ./deploy_petclinic.sh
+#   (또는) sudo DB_HOST=... DB_NAME=... DB_USER=... DB_PASS=... ./deploy_petclinic.sh
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_ENV_FILE="${SCRIPT_DIR}/deploy_petclinic.local.env"
 
 # ── 환경 변수 (필요시 수정) ─────────────────────────────
 REPO_URL="https://github.com/bespin-nova/WAS.git"
@@ -27,7 +34,29 @@ log() { echo -e "\n\033[1;32m[INFO]\033[0m $*"; }
 err() { echo -e "\n\033[1;31m[ERROR]\033[0m $*" >&2; }
 
 if [[ $EUID -ne 0 ]]; then
-  err "root 권한으로 실행해야 합니다. (sudo ./deploy_petclinic.sh)"
+  err "root 권한으로 실행해야 합니다. (sudo -E ./deploy_petclinic.sh)"
+  exit 1
+fi
+
+# Cloud SQL(MySQL) 연결 정보: 로컬 설정 파일(있는 경우) -> 환경변수 순으로 채움
+if [[ -f "$LOCAL_ENV_FILE" ]]; then
+  log "로컬 DB 설정 파일 로드: ${LOCAL_ENV_FILE}"
+  set -a
+  # shellcheck disable=SC1090
+  source "$LOCAL_ENV_FILE"
+  set +a
+fi
+
+DB_HOST="${DB_HOST:-}"
+DB_PORT="${DB_PORT:-3306}"
+DB_NAME="${DB_NAME:-petclinic}"
+DB_USER="${DB_USER:-}"
+DB_PASS="${DB_PASS:-}"
+
+if [[ -z "$DB_HOST" || -z "$DB_USER" || -z "$DB_PASS" ]]; then
+  err "DB_HOST/DB_USER/DB_PASS 가 설정되지 않았습니다."
+  err "  1) ${LOCAL_ENV_FILE} 파일을 만들어 DB_HOST=... 형태로 정의하거나"
+  err "  2) sudo DB_HOST=... DB_USER=... DB_PASS=... ./deploy_petclinic.sh 로 실행하세요."
   exit 1
 fi
 
@@ -72,12 +101,18 @@ fi
 cd "$WORKDIR"
 chmod +x mvnw
 
-# 3) 빌드 (Maven Wrapper 사용, JDK 17 지정) --------------------------
-log "Maven 빌드 시작 (JAVA_HOME=${JAVA_HOME_DIR})"
+# 3) 빌드 (Maven Wrapper 사용, JDK 17 지정, MySQL(Cloud SQL) 프로필 활성화) ---
+log "Maven 빌드 시작 (JAVA_HOME=${JAVA_HOME_DIR}, DB=${DB_HOST}:${DB_PORT}/${DB_NAME})"
 export JAVA_HOME="$JAVA_HOME_DIR"
 export PATH="$JAVA_HOME/bin:$PATH"
 
-./mvnw -B clean package -DskipTests
+# MySQL 프로필 활성화(mysql-connector-java 의존성 포함) +
+# data-access.properties 의 ${MYSQL_URL}/${MYSQL_USER}/${MYSQL_PASS} 플레이스홀더를
+# 빌드 시점에 리소스 필터링으로 치환
+./mvnw -B clean package -DskipTests -P MySQL \
+  -DMYSQL_URL="jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useUnicode=true" \
+  -DMYSQL_USER="${DB_USER}" \
+  -DMYSQL_PASS="${DB_PASS}"
 
 WAR_FILE=$(find target -maxdepth 1 -name "*.war" | head -n1)
 if [[ -z "$WAR_FILE" ]]; then
@@ -121,9 +156,5 @@ else
   tail -n 50 "${CATALINA_HOME}/logs/catalina.out" || true
   exit 1
 fi
-
-# 6) GCP 메타데이터 startup-script 재실행 (검증용) --------------------
-log "GCP metadata startup-script 재실행"
-google_metadata_script_runner startup
 
 log "완료되었습니다."
