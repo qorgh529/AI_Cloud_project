@@ -1,0 +1,27 @@
+# systemd unit for the PetClinic REST WAS process.
+# Installed to /etc/systemd/system/petclinic.service by startup-script.sh.
+[Unit]
+Description=PetClinic REST WAS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=petclinic
+Group=petclinic
+EnvironmentFile=/etc/petclinic/petclinic.env
+WorkingDirectory=/opt/petclinic
+ExecStart=/usr/bin/java -jar /opt/petclinic/app.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+# Give the JVM a bit of headroom on small instances; tune per machine type.
+Environment="JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m"
+
+# Internal LB health checks and Cloud Logging both read from this process,
+# so keep stdout/stderr flowing to journald where the Logging agent picks it up.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
