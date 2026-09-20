@@ -5,17 +5,18 @@
 ## 파일 구성
 
 - `startup-script.sh`
-  - GCE 인스턴스 메타데이터 `startup-script`로 등록하는 진입점 스크립트.
-  - 부팅 시 `deploy-petclinic-war.sh`를 `/opt/scripts/`에 생성한 뒤 실행하여
-    `gs://npc-bucket-nova/releases/petclinic.war`를 내려받아 배포하고,
-    이어서 Cloud SQL(MySQL) 연결 설정 및 PetClinic 스키마/초기데이터를
-    적재한 뒤 Tomcat을 (재)시작한다.
+  - GCE 인스턴스 메타데이터 `startup-script`로 등록하는 **단일 파일**.
+  - 부팅 시 자기 안에서 바로 `gs://npc-bucket-nova/releases/petclinic.war`를
+    내려받아 `/opt/tomcat/webapps/petclinic`에 배포하고, 이어서 Cloud
+    SQL(MySQL) 연결 설정 및 PetClinic 스키마/초기데이터를 적재한 뒤
+    Tomcat을 (재)시작한다. 별도 파일을 생성/호출하지 않는다.
 - `deploy-petclinic-war.sh`
-  - GCS 버킷에서 war를 내려받아 `/opt/tomcat/webapps/petclinic`에
-    배포(압축 해제)하는 역할만 담당하는 독립 스크립트.
-  - `startup-script.sh`가 부팅 시 동일한 내용을
-    `/opt/scripts/deploy-petclinic-war.sh`로 생성/실행하므로, 이 파일은
-    참고용 원본이자 필요 시 인스턴스에서 단독으로 재실행할 때 사용한다.
+  - war 다운로드/배포 로직만 떼어낸 독립 스크립트(참고용/수동 재실행용).
+  - `startup-script.sh`가 실행 중 이 파일을 만들거나 호출하지는 않는다.
+    war 배포만 다시 하고 싶을 때 인스턴스에 SSH로 접속해 직접
+    `sudo bash deploy-petclinic-war.sh`로 실행할 수 있도록 남겨둔 참고
+    스크립트다. 필요 없으면 삭제해도 `startup-script.sh` 동작에는 영향이
+    없다.
 
 ## 사용 방법
 
@@ -47,5 +48,5 @@ gcloud compute instances add-metadata petclinic-was \
 
 ## 로그
 
-- war 배포 로그: `/var/log/war-deploy.log`
-- 전체 startup-script 로그: `/var/log/startup-script.log`
+- 전체 startup-script 로그(war 배포 포함): `/var/log/startup-script.log`
+- `deploy-petclinic-war.sh`를 수동으로 단독 실행한 경우: `/var/log/war-deploy.log`
