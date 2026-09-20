@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# GCE 인스턴스 startup-script (단일 파일 버전)
+# npc-was-start-script-v1.sh — GCE 인스턴스 startup-script (단일 파일 버전)
 #
 # - 대상 이미지: Rocky Linux 9, Tomcat9 + JDK17 사전 설치
 # - 동작 순서

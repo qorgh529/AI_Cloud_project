@@ -4,7 +4,7 @@
 
 ## 파일 구성
 
-- `startup-script.sh`
+- `npc-was-start-script-v1.sh`
   - GCE 인스턴스 메타데이터 `startup-script`로 등록하는 **단일 파일**.
   - 부팅 시 자기 안에서 바로 `gs://npc-bucket-nova/releases/petclinic.war`를
     내려받아 `/opt/tomcat/webapps/petclinic`에 배포하고, 이어서 Cloud
@@ -12,11 +12,11 @@
     Tomcat을 (재)시작한다. 별도 파일을 생성/호출하지 않는다.
 - `deploy-petclinic-war.sh`
   - war 다운로드/배포 로직만 떼어낸 독립 스크립트(참고용/수동 재실행용).
-  - `startup-script.sh`가 실행 중 이 파일을 만들거나 호출하지는 않는다.
-    war 배포만 다시 하고 싶을 때 인스턴스에 SSH로 접속해 직접
+  - `npc-was-start-script-v1.sh`가 실행 중 이 파일을 만들거나 호출하지는
+    않는다. war 배포만 다시 하고 싶을 때 인스턴스에 SSH로 접속해 직접
     `sudo bash deploy-petclinic-war.sh`로 실행할 수 있도록 남겨둔 참고
-    스크립트다. 필요 없으면 삭제해도 `startup-script.sh` 동작에는 영향이
-    없다.
+    스크립트다. 필요 없으면 삭제해도 `npc-was-start-script-v1.sh` 동작에는
+    영향이 없다.
 
 ## 사용 방법
 
@@ -24,7 +24,7 @@
 gcloud compute instances create petclinic-was \
   --image-family=rocky-linux-9-tomcat9-jdk17 \
   --image-project=<YOUR_PROJECT> \
-  --metadata-from-file=startup-script=scripts/gce/startup-script.sh \
+  --metadata-from-file=startup-script=scripts/gce/npc-was-start-script-v1.sh \
   --service-account=<서비스 계정> \
   --scopes=cloud-platform
 ```
@@ -34,7 +34,7 @@ gcloud compute instances create petclinic-was \
 ```bash
 gcloud compute instances add-metadata petclinic-was \
   --zone=<ZONE> \
-  --metadata-from-file=startup-script=scripts/gce/startup-script.sh
+  --metadata-from-file=startup-script=scripts/gce/npc-was-start-script-v1.sh
 ```
 
 ## 사전 요구사항
