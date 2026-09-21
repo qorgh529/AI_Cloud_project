@@ -1,0 +1,15 @@
+[Unit]
+Description=Locust load testing web UI
+After=network.target
+
+[Service]
+Type=simple
+User={{LOCUST_USER}}
+Group={{LOCUST_USER}}
+WorkingDirectory={{LOCUST_HOME}}
+ExecStart={{LOCUST_HOME}}/venv/bin/locust -f {{LOCUST_HOME}}/locustfile.py --web-host 0.0.0.0 --web-port {{LOCUST_PORT}}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

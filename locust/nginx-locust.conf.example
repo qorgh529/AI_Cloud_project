@@ -1,0 +1,33 @@
+# 외부(공인망/포트포워딩)로 Locust 웹 UI를 노출할 때 사용하는 예시 설정.
+# 인증 없이 8089 포트를 그대로 인터넷에 노출하지 말 것 — 누구나 부하테스트를 트리거할 수 있음.
+#
+# 설치:
+#   apt-get install -y nginx apache2-utils
+#   htpasswd -c /etc/nginx/.locust_htpasswd <username>
+#   cp nginx-locust.conf.example /etc/nginx/sites-available/locust
+#   ln -s /etc/nginx/sites-available/locust /etc/nginx/sites-enabled/locust
+#   nginx -t && systemctl reload nginx
+#
+# TLS는 certbot 등으로 별도 발급 후 443 서버 블록에 연결할 것.
+
+server {
+    listen 80;
+    server_name locust.example.com;
+
+    auth_basic "Locust";
+    auth_basic_user_file /etc/nginx/.locust_htpasswd;
+
+    location / {
+        proxy_pass http://127.0.0.1:8089;
+        proxy_http_version 1.1;
+
+        # Locust 웹 UI는 WebSocket으로 실시간 통계를 갱신함
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
